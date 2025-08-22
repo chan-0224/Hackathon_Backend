@@ -1,12 +1,53 @@
-# 로컬 개발 환경 설정 예시
-# 이 파일을 application-local.properties로 복사하고 실제 값으로 변경하세요
-# application-local.properties는 .gitignore에 포함되어 깃헙에 업로드되지 않습니다
+# =============================================================================
+# 로컬 개발 환경 설정 예시 파일
+# =============================================================================
+# 이 파일을 복사하여 application-local.properties로 이름을 변경하고
+# 실제 값으로 수정하여 사용하세요.
+# 
+# ⚠️ 주의사항:
+# - 이 파일은 .gitignore에 포함되어 GitHub에 업로드되지 않습니다
+# - 실제 API 키와 비밀번호는 절대 GitHub에 커밋하지 마세요
+# - 팀원들과 공유할 때는 이 예시 파일만 공유하세요
 
+# =============================================================================
 # 데이터베이스 설정
-DB_URL=jdbc:mysql://localhost:3306/hackathon_db?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
-DB_USERNAME=root
-DB_PASSWORD=your_actual_password
+# =============================================================================
+# MySQL 데이터베이스 접속 정보
+spring.datasource.username=your_db_username
+spring.datasource.password=your_db_password
 
-# API 키 설정
-SEOUL_CULTURE_API_KEY=your_actual_seoul_api_key
-CHATGPT_API_KEY=your_actual_chatgpt_api_key
+# =============================================================================
+# OpenAI API 설정
+# =============================================================================
+# OpenAI API 키 (https://platform.openai.com/api-keys에서 발급)
+openai.api.key=your_openai_api_key_here
+openai.model=gpt-3.5-turbo
+openai.max-tokens=100
+openai.temperature=0.3
+
+# =============================================================================
+# 서울시 문화행사 API 설정
+# =============================================================================
+# 서울시 OpenAPI 키 (https://data.seoul.go.kr/에서 발급)
+seoul.culture.api.key=your_seoul_api_key_here
+
+# =============================================================================
+# 환경변수 설정 예시
+# =============================================================================
+# Windows PowerShell:
+# $env:OPENAI_API_KEY="your_openai_api_key_here"
+# $env:SEOUL_CULTURE_API_KEY="your_seoul_api_key_here"
+# $env:DB_USERNAME="your_db_username"
+# $env:DB_PASSWORD="your_db_password"
+
+# Windows Command Prompt:
+# set OPENAI_API_KEY=your_openai_api_key_here
+# set SEOUL_CULTURE_API_KEY=your_seoul_api_key_here
+# set DB_USERNAME=your_db_username
+# set DB_PASSWORD=your_db_password
+
+# Linux/Mac:
+# export OPENAI_API_KEY="your_openai_api_key_here"
+# export SEOUL_CULTURE_API_KEY="your_seoul_api_key_here"
+# export DB_USERNAME="your_db_username"
+# export DB_PASSWORD="your_db_password"

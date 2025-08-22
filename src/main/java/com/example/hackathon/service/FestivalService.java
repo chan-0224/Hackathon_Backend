@@ -8,6 +8,9 @@ import com.example.hackathon.repository.FestivalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.annotation.PostConstruct;
 
@@ -26,6 +30,7 @@ public class FestivalService {
     
     private final FestivalRepository festivalRepository;
     private final WebClient webClient;
+    private final FestivalAIService festivalAIService;
     
     @Value("${seoul.culture.api.key}")
     private String apiKey;
@@ -116,10 +121,19 @@ public class FestivalService {
     }
     
     /**
+     * ID로 특정 문화행사 조회
+     */
+    public Festival getFestivalById(Long id) {
+        log.info("문화행사 ID 조회: {}", id);
+        return festivalRepository.findById(id).orElse(null);
+    }
+    
+    /**
      * API 호출 (재시도 로직 포함)
      */
     @Retryable(value = {WebClientResponseException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     private CulturalEventApiResponse callApi(int startIndex, int endIndex) {
+        // 서울시 API JSON 포맷 명시 및 올바른 서비스명 사용
         String url = String.format("/%s/json/culturalEventInfo/%d/%d/", apiKey, startIndex, endIndex);
         
         log.info("API 호출 URL: {}", url);
@@ -135,8 +149,8 @@ public class FestivalService {
             log.info("API 응답 길이: {} 문자", responseBody.length());
             log.info("API 응답 시작 부분: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
             
-            // XML 오류 응답인지 확인
-            if (responseBody.contains("<RESULT>") && responseBody.contains("ERROR")) {
+            // 오류 응답인지 확인
+            if (responseBody.contains("ERROR")) {
                 log.error("API 오류 응답: {}", responseBody);
                 throw new RuntimeException("API 오류: " + responseBody);
             }
@@ -193,6 +207,9 @@ public class FestivalService {
                 try {
                     // 한 번 더 중복 체크
                     if (!festivalRepository.existsByUniqueKey(festival.getUniqueKey())) {
+                        // AI 요약 및 태그 생성
+                        generateAIForFestival(festival);
+                        
                         festivalRepository.save(festival);
                         savedCount++;
                     } else {
@@ -243,11 +260,165 @@ public class FestivalService {
     }
     
     /**
+     * 축제에 대한 AI 요약 및 태그를 생성합니다.
+     */
+    private void generateAIForFestival(Festival festival) {
+        try {
+            log.info("축제 AI 생성 시작: {}", festival.getName());
+            
+            // AI 요약 생성
+            String aiSummary = festivalAIService.generateAISummary(festival);
+            if (aiSummary != null) {
+                festival.setAiSummary(aiSummary);
+                log.info("AI 요약 생성 완료: {}", festival.getName());
+            } else {
+                log.warn("AI 요약 생성 실패: {}", festival.getName());
+            }
+            
+            // 분위기 태그 생성
+            String moodTags = festivalAIService.generateMoodTags(festival);
+            if (moodTags != null) {
+                festival.setMoodTags(moodTags);
+                log.info("분위기 태그 생성 완료: {}", festival.getName());
+            } else {
+                log.warn("분위기 태그 생성 실패: {}", festival.getName());
+            }
+            
+        } catch (Exception e) {
+            log.error("축제 AI 생성 중 오류 발생: {} - {}", festival.getName(), e.getMessage());
+            // AI 생성 실패해도 기본 데이터는 저장
+        }
+    }
+    
+    /**
+     * 기존 축제 데이터에 AI 요약 및 태그를 생성합니다.
+     */
+    public void generateAIForExistingFestivals() {
+        log.info("기존 축제 데이터 AI 생성 시작");
+        
+        List<Festival> festivals = festivalRepository.findAll();
+        int processedCount = 0;
+        int successCount = 0;
+        
+        for (Festival festival : festivals) {
+            try {
+                processedCount++;
+                
+                // AI 요약이 없으면 생성
+                if (festival.getAiSummary() == null || festival.getAiSummary().trim().isEmpty()) {
+                    String aiSummary = festivalAIService.generateAISummary(festival);
+                    if (aiSummary != null) {
+                        festival.setAiSummary(aiSummary);
+                        log.info("기존 축제 AI 요약 생성 완료: {} ({}/{})", festival.getName(), processedCount, festivals.size());
+                    }
+                }
+                
+                // 분위기 태그가 없으면 생성
+                if (festival.getMoodTags() == null || festival.getMoodTags().trim().isEmpty()) {
+                    String moodTags = festivalAIService.generateMoodTags(festival);
+                    if (moodTags != null) {
+                        festival.setMoodTags(moodTags);
+                        log.info("기존 축제 분위기 태그 생성 완료: {} ({}/{})", festival.getName(), processedCount, festivals.size());
+                    }
+                }
+                
+                // 변경사항이 있으면 저장
+                if (festival.getAiSummary() != null || festival.getMoodTags() != null) {
+                    festivalRepository.save(festival);
+                    successCount++;
+                }
+                
+                // API 호출 제한을 위한 딜레이
+                Thread.sleep(1000);
+                
+            } catch (Exception e) {
+                log.error("기존 축제 AI 생성 실패: {} - {}", festival.getName(), e.getMessage());
+            }
+        }
+        
+        log.info("기존 축제 데이터 AI 생성 완료: {}건 처리, {}건 성공", processedCount, successCount);
+    }
+    
+    /**
      * 매일 새벽 2시에 자동으로 문화행사 데이터 수집
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduledFetchAndSaveFestivals() {
         log.info("스케줄된 문화행사 데이터 수집 시작");
         fetchAndSaveFestivals();
+    }
+
+    /**
+     * 태그 기반 추천 문화행사 조회 (페이징 포함)
+     */
+    public Map<String, Object> getRecommendedFestivals(String tags, int page, int size) {
+        log.info("태그 기반 추천 문화행사 조회 - 태그: {}, 페이지: {}, 크기: {}", tags, page, size);
+        
+        try {
+            // 태그 파라미터 처리
+            String processedTag = processTag(tags);
+            
+            if (processedTag == null || processedTag.isEmpty()) {
+                log.info("유효한 태그가 없어 전체 문화행사를 반환합니다.");
+                Pageable pageable = PageRequest.of(page, size);
+                Page<Festival> allFestivals = festivalRepository.findAll(pageable);
+                
+                return Map.of(
+                    "success", true,
+                    "data", allFestivals.getContent(),
+                    "totalCount", allFestivals.getTotalElements(),
+                    "totalPages", allFestivals.getTotalPages(),
+                    "currentPage", page,
+                    "pageSize", size
+                );
+            }
+            
+            // 페이징 설정
+            Pageable pageable = PageRequest.of(page, size);
+            
+            // 추천 문화행사 조회 (첫 번째 태그만 사용)
+            Page<Festival> recommendedFestivals = festivalRepository.findFestivalsByTagWithPaging(processedTag, pageable);
+            
+            log.info("추천 문화행사 조회 완료 - 총 {}건, 현재 페이지 {}건", 
+                recommendedFestivals.getTotalElements(), recommendedFestivals.getContent().size());
+            
+            return Map.of(
+                "success", true,
+                "data", recommendedFestivals.getContent(),
+                "totalCount", recommendedFestivals.getTotalElements(),
+                "totalPages", recommendedFestivals.getTotalPages(),
+                "currentPage", page,
+                "pageSize", size,
+                "requestedTag", processedTag
+            );
+            
+        } catch (Exception e) {
+            log.error("태그 기반 추천 문화행사 조회 중 오류 발생", e);
+            return Map.of(
+                "success", false,
+                "error", "추천 문화행사 조회 중 오류가 발생했습니다: " + e.getMessage()
+            );
+        }
+    }
+    
+    /**
+     * 태그 파라미터 처리 및 유효성 검사 (단일 태그)
+     */
+    private String processTag(String tags) {
+        if (tags == null || tags.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 쉼표로 분리하고 첫 번째 태그만 사용
+        String[] tagArray = tags.split(",");
+        if (tagArray.length > 0) {
+            String firstTag = tagArray[0].trim();
+            if (!firstTag.isEmpty()) {
+                log.debug("처리된 태그: {}", firstTag);
+                return firstTag;
+            }
+        }
+        
+        return null;
     }
 }

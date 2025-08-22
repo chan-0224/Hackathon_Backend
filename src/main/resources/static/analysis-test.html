@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리뷰 분석 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .score-high { background-color: #d4edda; color: #155724; }
+        .score-medium { background-color: #fff3cd; color: #856404; }
+        .score-low { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 축제 리뷰 분석 시스템</h1>
+        
+        <!-- 1. 축제별 리뷰 분석 -->
+        <div class="section">
+            <h2>1. 축제별 리뷰 분석</h2>
+            <p>특정 축제의 모든 리뷰를 분석하여 점수를 매깁니다.</p>
+            <input type="text" id="festivalName" placeholder="축제 이름 (예: 서울불꽃축제)" value="서울불꽃축제">
+            <button onclick="analyzeFestival()">축제 리뷰 분석 시작</button>
+            <div id="festivalResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- 2. 개별 리뷰 분석 -->
+        <div class="section">
+            <h2>2. 개별 리뷰 분석</h2>
+            <p>특정 리뷰 ID를 입력하여 개별 분석을 수행합니다.</p>
+            <input type="number" id="reviewId" placeholder="리뷰 ID" value="1">
+            <button onclick="analyzeReview()">개별 리뷰 분석</button>
+            <div id="reviewResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- 3. 축제 통계 조회 -->
+        <div class="section">
+            <h2>3. 축제 분석 통계</h2>
+            <p>축제별 분석 결과 통계를 조회합니다.</p>
+            <input type="text" id="statsFestivalName" placeholder="축제 이름" value="서울불꽃축제">
+            <button onclick="getFestivalStats()">통계 조회</button>
+            <div id="statsResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- 4. 분석 결과 조회 -->
+        <div class="section">
+            <h2>4. 전체 분석 결과</h2>
+            <p>모든 분석 결과를 조회합니다.</p>
+            <button onclick="getAllResults()">전체 결과 조회</button>
+            <div id="allResults" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/analysis';
+        
+        // 축제별 리뷰 분석
+        async function analyzeFestival() {
+            const festivalName = document.getElementById('festivalName').value;
+            if (!festivalName) {
+                alert('축제 이름을 입력해주세요.');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('festivalResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '분석 중... (시간이 걸릴 수 있습니다)';
+            
+            try {
+                const response = await fetch(`${API_BASE}/festival/${encodeURIComponent(festivalName)}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const successCount = data.filter(a => a.isSuccess).length;
+                    const totalCount = data.length;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ 분석 완료!</h3>
+                        <p><strong>축제:</strong> ${festivalName}</p>
+                        <p><strong>총 리뷰:</strong> ${totalCount}개</p>
+                        <p><strong>성공:</strong> ${successCount}개</p>
+                        <p><strong>실패:</strong> ${totalCount - successCount}개</p>
+                        <br>
+                        <h4>분석 결과:</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(data.message || '분석 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+        
+        // 개별 리뷰 분석
+        async function analyzeReview() {
+            const reviewId = document.getElementById('reviewId').value;
+            if (!reviewId) {
+                alert('리뷰 ID를 입력해주세요.');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('reviewResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '분석 중...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/review/${reviewId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    
+                    if (data.isSuccess) {
+                        const score = data.festivalScore;
+                        let scoreClass = 'score-medium';
+                        if (score >= 81) scoreClass = 'score-high';
+                        else if (score <= 40) scoreClass = 'score-low';
+                        
+                        resultDiv.innerHTML = `
+                            <h3>✅ 분석 완료!</h3>
+                            <div class="score ${scoreClass}">
+                                축제 점수: ${score}점
+                            </div>
+                            <p><strong>리뷰 제목:</strong> ${data.review.title}</p>
+                            <p><strong>분석 시간:</strong> ${new Date(data.analyzedAt).toLocaleString()}</p>
+                            <br>
+                            <h4>전체 분석 결과:</h4>
+                            <pre>${data.analysisResult}</pre>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <h3>❌ 분석 실패</h3>
+                            <p><strong>오류:</strong> ${data.errorMessage}</p>
+                        `;
+                    }
+                } else {
+                    throw new Error(data.message || '분석 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+        
+        // 축제 통계 조회
+        async function getFestivalStats() {
+            const festivalName = document.getElementById('statsFestivalName').value;
+            if (!festivalName) {
+                alert('축제 이름을 입력해주세요.');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('statsResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '통계 조회 중...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/festival/${encodeURIComponent(festivalName)}/stats`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    
+                    const avgScore = data.averageFestivalScore;
+                    let scoreClass = 'score-medium';
+                    if (avgScore >= 81) scoreClass = 'score-high';
+                    else if (avgScore <= 40) scoreClass = 'score-low';
+                    
+                    resultDiv.innerHTML = `
+                        <h3>📊 축제 분석 통계</h3>
+                        <div class="score ${scoreClass}">
+                            평균 점수: ${avgScore}점
+                        </div>
+                        <p><strong>축제명:</strong> ${data.festivalName}</p>
+                        <p><strong>총 리뷰:</strong> ${data.totalReviews}개</p>
+                        <p><strong>분석 완료:</strong> ${data.analyzedReviews}개</p>
+                        <br>
+                        <h4>점수 분포:</h4>
+                        <ul>
+                            <li>매우나쁨 (0-20점): ${data.scoreDistribution['매우나쁨(0-20)']}개</li>
+                            <li>나쁨 (21-40점): ${data.scoreDistribution['나쁨(21-40)']}개</li>
+                            <li>보통 (41-60점): ${data.scoreDistribution['보통(41-60)']}개</li>
+                            <li>좋음 (61-80점): ${data.scoreDistribution['좋음(61-80)']}개</li>
+                            <li>매우좋음 (81-100점): ${data.scoreDistribution['매우좋음(81-100)']}개</li>
+                        </ul>
+                    `;
+                } else {
+                    throw new Error(data.message || '통계 조회 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+        
+        // 전체 분석 결과 조회
+        async function getAllResults() {
+            const resultDiv = document.getElementById('allResults');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '결과 조회 중...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/results`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>📋 전체 분석 결과</h3>
+                        <p><strong>총 분석 결과:</strong> ${data.length}개</p>
+                        <br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(data.message || '결과 조회 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
