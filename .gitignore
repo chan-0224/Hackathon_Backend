@@ -54,13 +54,89 @@ logs/
 *.swp
 *.swo
 
-# 보안 관련 파일 (중요!)
+# =============================================================================
+# 🔒 보안 관련 파일 (중요!)
+# =============================================================================
+# 로컬 설정 파일 (API 키, 데이터베이스 비밀번호 등)
 src/main/resources/application-local.properties
 src/main/resources/application-prod.properties
+src/main/resources/application-dev.properties
+src/main/resources/application-test.properties
+
+# 환경 변수 파일
 *.env
 .env.*
+.env.local
+.env.development
+.env.test
+.env.production
 
+# API 키 및 인증 정보
+**/api-keys.txt
+**/secrets.txt
+**/credentials.txt
+**/passwords.txt
+
+# 데이터베이스 백업 파일
+*.sql
+*.dump
+*.backup
+
+# =============================================================================
 # 데이터 파일
+# =============================================================================
+# JSON 데이터 파일
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!angular.json
+
+# CSV 및 Excel 파일
 *.csv
 *.xlsx
+*.xls
+
+# 이미지 및 미디어 파일
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.mp4
+*.avi
+*.mov
+
+# 압축 파일
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+
+# =============================================================================
+# 기타
+# =============================================================================
+# Node.js (만약 프론트엔드가 추가되는 경우)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (만약 스크립트가 추가되는 경우)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
