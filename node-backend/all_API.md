@@ -13,7 +13,7 @@
 10. [지역 설정](#📍지역-설정)
 ---
 ## 📌 기본 정보
-- **Base URL:** `http://localhost:3001`(로컬 서버 주소)
+- **Base URL:** `http://3.38.210.80:3001`
 - **Content-Type:** `application/json`(이미지 업로드 시 `multipart/form-data`)
 - **인증:** 없음 (로그인 없이 사용 가능)
 
@@ -614,17 +614,28 @@
 
 - **URL:** `/faq`
 - **Method:** `GET`
-- **설명:** 전체 FAQ 목록 조회
+- **설명:** 전체 FAQ 목록 조회 (category 포함)
 
 - **Response:**
 ```
-{
-  "id": 1,
+[
+  {
+    "id": 1,
     "question": "회원가입은 어떻게 하나요?",
     "answer": "홈페이지 상단의 가입 버튼을 클릭 후 정보를 입력하면 됩니다.",
     "created_at": "2025-08-23T03:00:00.000Z",
-    "updated_at": "2025-08-23T03:00:00.000Z"
-}
+    "updated_at": "2025-08-23T03:00:00.000Z",
+    "category": "계정"
+  },
+  {
+    "id": 2,
+    "question": "지역 설정은 어떻게 하나요?",
+    "answer": "현재는 서울시 구 단위로 지역을 설정할 수 있습니다. 상단의 지역 선택 버튼을 클릭하여 원하는 구를 선택해주세요. 추후 수도권 외부 지역까지 세분화할 예정입니다.",
+    "created_at": "2025-08-23T03:00:00.000Z",
+    "updated_at": "2025-08-23T03:00:00.000Z",
+    "category": "서비스 사용법"
+  }
+]
 ```
 
 **Status Codes:**
@@ -639,30 +650,32 @@
 
 - **Method**: `POST`
 
-- **설명**: 새로운 FAQ 추가. 관리자 권한 필요.
+- **설명**: 새로운 FAQ 추가. (category 포함, 관리자 권한 필요)
 
 - **Request Body**:
 ```
 {
- "question": "질문 내용",
-  "answer": "답변 내용"
+  "question": "질문 내용",
+  "answer": "답변 내용",
+  "category": "계정"
 }
 ```
 
 - **Response**:
 ```
   {
-   "id": 2,
+  "id": 3,
   "question": "질문 내용",
   "answer": "답변 내용",
   "created_at": "2025-08-23T03:05:00.000Z",
-  "updated_at": "2025-08-23T03:05:00.000Z"
-  }
+  "updated_at": "2025-08-23T03:05:00.000Z",
+  "category": "계정"
+}
 ```
 **Status Codes**
 
 - `201 Created` 성공
-- `400 Bad Request` 질문/답변 누락
+- `400 Bad Request` 질문/답변/카테고리 누락
 - `500 Internal Server Error` 서버 오류
 
 ---
@@ -834,7 +847,7 @@
 
 **1. 지역 목록 조회**
 
-- **URL:** `/regions/list`
+- **URL:** `/region/list`
 - **Method:** `GET`
 - **설명:** DB에 저장된 지역 목록 조회 (서울 25개 구 단위 기준)
 
@@ -855,20 +868,25 @@
 - `500 Internal Server Error` 서버 오류
 
 
-**2. 선택한 지역 기반 AI 행사 조회**
+**2. 선택한 지역 설정 및 AI 행사 조회**
 
-- **URL:**: `/regions/events`
+- **URL:**: `/region/events`
 
-- **Method**: `GET`
+- **Method**: `POST`
 
-- **설명**: 선택한 지역(district)을 기준으로 AI 백엔드에서 행사 정보 조회
+- **설명**: 프론트에서 선택한 지역을 서버에 설정하고, 해당 지역 기준으로 AI 백엔드에서 행사 정보 반환
 
-- **Query Parameter:**:
-  - `district` (string, 필수) – ex: `'강남구'`
-
-- **Response 예시**:
+- **Request Body**:
 ```
-  {
+{
+  "district": "강남구"
+}
+```
+- **Response 예시**:
+
+```
+{
+  "message": "지역 \"강남구\" 기준 행사 조회",
   "events": [
     {
       "id": 1,
@@ -896,4 +914,3 @@
 - `201 Created` 정상 조회
 - `400 Bad Request` `district` 쿼리 누락
 - `500 Internal Server Error` AI 백엔드 호출 실패
-gi
