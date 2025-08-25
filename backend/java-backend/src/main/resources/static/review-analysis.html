@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 후기 분석 도구</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .stats {
+            background-color: #e2e3e5;
+            border: 1px solid #d6d8db;
+            color: #383d41;
+            margin-top: 20px;
+        }
+        .review-item {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .review-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .review-content {
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .review-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        .sentiment-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .sentiment-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
+            transition: width 0.3s ease;
+        }
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .keyword {
+            background-color: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .positive {
+            background-color: #28a745;
+        }
+        .negative {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI 후기 분석 도구</h1>
+        
+        <div class="form-group">
+            <label for="festivalSelect">분석할 축제/행사 선택:</label>
+            <select id="festivalSelect">
+                <option value="">축제를 선택해주세요...</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <button onclick="loadFestivals()" id="loadBtn">📋 축제 목록 불러오기</button>
+            <button onclick="startAnalysis()" id="analyzeBtn" disabled>🔍 AI 분석 시작</button>
+            <button onclick="viewResults()" id="viewBtn" disabled>📊 분석 결과 보기</button>
+            <button onclick="clearAnalysisData()" id="clearBtn" style="background-color: #dc3545;">🗑️ 분석 데이터 삭제</button>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        <div id="analysisResults" style="display: none;"></div>
+    </div>
+
+    <script>
+        // 전역 변수 선언
+        let currentFestival = null;
+        let analysisResults = [];
+        let successfulReviews = [];
+        let isEventListenerAdded = false; // 이벤트 리스너 중복 등록 방지
+
+        // 페이지 로드 시 초기화만 수행
+        window.onload = function() {
+            // 아무것도 하지 않음 - 사용자가 버튼을 클릭할 때만 로드
+            console.log('페이지 로드 완료 - 축제 목록을 불러오려면 버튼을 클릭하세요.');
+        };
+
+        async function loadFestivals() {
+            try {
+                const response = await fetch('/api/crawler/reviews?size=100');
+                
+                if (!response.ok) {
+                    showResult(`❌ HTTP 오류: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                const result = await response.json();
+                const reviews = result.reviews || [];
+                
+                if (reviews.length > 0) {
+                    // 성공적으로 크롤링된 후기가 있는 축제만 필터링
+                    successfulReviews = reviews.filter(review => 
+                        review.isSuccess === true && 
+                        review.festivalName != null && 
+                        review.festivalName.trim() !== ''
+                    );
+                    
+                    if (successfulReviews.length === 0) {
+                        showResult('❌ 분석할 수 있는 후기가 없습니다.\n먼저 크롤링을 통해 후기를 수집해주세요.', 'error');
+                        return;
+                    }
+                    
+                    // 축제 이름 중복 제거 (후기가 있는 축제만)
+                    const festivalNames = [...new Set(successfulReviews.map(review => review.festivalName))];
+                    
+                    const select = document.getElementById('festivalSelect');
+                    select.innerHTML = '<option value="">축제를 선택해주세요...</option>';
+                    
+                    festivalNames.forEach(festivalName => {
+                        // 각 축제별 후기 개수 계산
+                        const reviewCount = successfulReviews.filter(review => 
+                            review.festivalName === festivalName
+                        ).length;
+                        
+                        const option = document.createElement('option');
+                        option.value = festivalName;
+                        option.textContent = `${festivalName} (${reviewCount}개 후기)`;
+                        select.appendChild(option);
+                    });
+                    
+                    // 기존 이벤트 리스너 제거 후 새로 등록 (중복 방지)
+                    if (isEventListenerAdded) {
+                        select.removeEventListener('change', selectChangeHandler);
+                    }
+                    
+                    // 이벤트 핸들러 함수 정의
+                    function selectChangeHandler() {
+                        currentFestival = this.value;
+                        document.getElementById('analyzeBtn').disabled = !currentFestival;
+                        
+                        // 선택된 축제의 후기 개수 표시
+                        if (currentFestival) {
+                            const selectedFestivalReviews = successfulReviews.filter(review => 
+                                review.festivalName === currentFestival
+                            );
+                            const reviewCount = selectedFestivalReviews.length;
+                            
+                            showResult(`📋 선택된 축제: ${currentFestival}\n📊 사용 가능한 후기: ${reviewCount}개\n🔍 분석할 후기: 1개`, 'success');
+                        }
+                    }
+                    
+                    // 새 이벤트 리스너 등록
+                    select.addEventListener('change', selectChangeHandler);
+                    isEventListenerAdded = true;
+                    
+                    showResult(`✅ 후기가 있는 축제 목록을 불러왔습니다. (${festivalNames.length}개 축제, 총 ${successfulReviews.length}개 후기)\n분석할 축제를 선택해주세요.`, 'success');
+                    
+                } else {
+                    showResult('❌ 분석할 수 있는 후기가 없습니다.\n먼저 크롤링을 통해 후기를 수집해주세요.', 'error');
+                }
+                
+            } catch (error) {
+                showResult(`❌ 축제 목록 불러오기 실패: ${error.message}`, 'error');
+            }
+        }
+
+        async function startAnalysis() {
+            if (!currentFestival) {
+                showResult('축제를 선택해주세요.', 'error');
+                return;
+            }
+            
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('analyzeBtn').textContent = '🔄 분석 중...';
+            
+            showResult(`AI 분석을 시작합니다...\n축제: ${currentFestival}\n분석할 후기: 1개`, 'loading');
+            
+            try {
+                const response = await fetch(`/api/analysis/festival/${encodeURIComponent(currentFestival)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    showResult(`❌ HTTP 오류: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                const result = await response.json();
+                analysisResults = result || [];
+                
+                showResult(`✅ AI 분석 완료!\n\n축제: ${currentFestival}\n분석된 후기: ${analysisResults.length}개`, 'success');
+                document.getElementById('viewBtn').disabled = false;
+                
+            } catch (error) {
+                showResult(`❌ 오류 발생: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('analyzeBtn').textContent = '🔍 AI 분석 시작';
+            }
+        }
+
+        async function viewResults() {
+            if (analysisResults.length === 0) {
+                showResult('분석 결과가 없습니다.', 'error');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('analysisResults');
+            resultsDiv.style.display = 'block';
+            
+            let html = '<h2>📊 AI 분석 결과</h2>';
+            
+            analysisResults.forEach((analysis, index) => {
+                // 키워드 파싱
+                let positiveKeywords = [];
+                let negativeKeywords = [];
+                
+                try {
+                    if (analysis.positiveKeywords) {
+                        positiveKeywords = JSON.parse(analysis.positiveKeywords);
+                    }
+                    if (analysis.negativeKeywords) {
+                        negativeKeywords = JSON.parse(analysis.negativeKeywords);
+                    }
+                } catch (e) {
+                    console.error('키워드 파싱 실패:', e);
+                }
+                
+                html += `
+                    <div class="review-item">
+                        <div class="review-title">후기 ${index + 1}: ${analysis.review?.title || '제목 없음'}</div>
+                        <div class="review-content">${(analysis.review?.content || '내용 없음').substring(0, 200)}...</div>
+                        <div class="review-meta">분석 시간: ${analysis.analyzedAt || '알 수 없음'}</div>
+                        
+                        <h4>🎯 축제 점수</h4>
+                        <div class="sentiment-bar">
+                            <div class="sentiment-fill" style="width: ${analysis.festivalScore || 0}%"></div>
+                        </div>
+                        <div>점수: ${analysis.festivalScore || 0}/100</div>
+                        
+                        <h4>😊 만족도</h4>
+                        <div style="margin: 10px 0;">
+                            <div style="margin-bottom: 5px;">
+                                <span style="color: #28a745;">긍정: ${analysis.positivePercentage || 0}%</span>
+                            </div>
+                            <div class="sentiment-bar">
+                                <div class="sentiment-fill" style="width: ${analysis.positivePercentage || 0}%; background: #28a745;"></div>
+                            </div>
+                        </div>
+                        <div style="margin: 10px 0;">
+                            <div style="margin-bottom: 5px;">
+                                <span style="color: #dc3545;">부정: ${analysis.negativePercentage || 0}%</span>
+                            </div>
+                            <div class="sentiment-bar">
+                                <div class="sentiment-fill" style="width: ${analysis.negativePercentage || 0}%; background: #dc3545;"></div>
+                            </div>
+                        </div>
+                        
+                        <h4>🔑 키워드</h4>
+                        <div style="margin: 10px 0;">
+                            <div style="margin-bottom: 10px;">
+                                <span style="color: #28a745;">👍 긍정:</span>
+                                <div class="keywords">
+                                    ${positiveKeywords.map(k => `<span class="keyword positive">${k}</span>`).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <span style="color: #dc3545;">😔 부정:</span>
+                                <div class="keywords">
+                                    ${negativeKeywords.map(k => `<span class="keyword negative">${k}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4>🤖 AI 요약</h4>
+                        <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #007bff;">
+                            ${analysis.aiSummary || 'AI 요약 없음'}
+                        </p>
+                        
+                        <h4>📊 상태</h4>
+                        <div>성공: ${analysis.isSuccess ? '✅' : '❌'}</div>
+                        ${analysis.errorMessage ? `<div>오류: ${analysis.errorMessage}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+
+        async function clearAnalysisData() {
+            if (!confirm('정말로 모든 분석 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/analysis/clear', {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    showResult(`❌ HTTP 오류: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult('✅ 모든 분석 데이터가 삭제되었습니다.\n이제 새로운 분석을 시작할 수 있습니다.', 'success');
+                    
+                    // UI 초기화
+                    analysisResults = [];
+                    currentFestival = null;
+                    document.getElementById('festivalSelect').innerHTML = '<option value="">축제를 선택해주세요...</option>';
+                    document.getElementById('analyzeBtn').disabled = true;
+                    document.getElementById('viewBtn').disabled = true;
+                    document.getElementById('analysisResults').style.display = 'none';
+                    
+                    // 이벤트 리스너 상태도 리셋
+                    isEventListenerAdded = false;
+                    
+                } else {
+                    showResult(`❌ 삭제 실패: ${result.message}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`❌ 오류 발생: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

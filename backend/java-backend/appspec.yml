@@ -1,0 +1,31 @@
+version: 0.0
+os: linux
+
+files:
+  - source: /
+    destination: /opt/hackathon-backend/
+
+permissions:
+  - object: /opt/hackathon-backend/
+    pattern: "**"
+    owner: ubuntu
+    group: ubuntu
+    mode: 755
+
+hooks:
+  BeforeInstall:
+    - location: scripts/before_install.sh
+      timeout: 300
+      runas: root
+  AfterInstall:
+    - location: scripts/after_install.sh
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_application.sh
+      timeout: 300
+      runas: ubuntu
+  ApplicationStop:
+    - location: scripts/stop_application.sh
+      timeout: 300
+      runas: ubuntu
