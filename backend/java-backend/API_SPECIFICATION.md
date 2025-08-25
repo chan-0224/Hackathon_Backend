@@ -285,15 +285,13 @@ POST /api/analysis/festival/{festivalName}
 ```http
 GET /api/analysis/results
 ```
-**설명**: 모든 리뷰 분석 결과 조회 (페이징 지원)
+**설명**: 모든 리뷰 분석 결과 조회
 
 **응답**:
 ```json
 {
   "success": true,
   "totalCount": 10,
-  "page": 0,
-  "size": 20,
   "results": [
     {
       "id": 1,
@@ -310,7 +308,7 @@ GET /api/analysis/results
 }
 ```
 
-**참고**: 페이징 처리된 분석 결과를 조회합니다. 성공한 분석 결과만 반환됩니다.
+**참고**: 성공한 분석 결과만 반환됩니다.
 
 ### 4. 개별 분석 결과 삭제
 ```http
