@@ -302,7 +302,14 @@ GET /api/analysis/results
       "negativeKeywords": "혼잡,비싼음식",
       "aiSummary": "서울장미축제에 대한 매우 긍정적인 후기입니다. 장미의 아름다움과 축제 분위기에 대한 만족도가 높으며, 특히 장미터널과 사진 촬영 구역이 인상적이었다는 평가가 많습니다.",
       "isSuccess": true,
-      "analyzedAt": "2025-08-25 10:06:34"
+      "analyzedAt": "2025-08-25 10:06:34",
+      "review": {
+        "id": 123,
+        "festivalName": "서울장미축제",
+        "title": "서울장미축제 후기",
+        "author": "블로거",
+        "blogUrl": "https://blog.naver.com/..."
+      }
     }
   ]
 }

@@ -1,6 +1,7 @@
 package com.example.hackathon.repository;
 
 import com.example.hackathon.entity.ReviewAnalysis;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,6 +24,8 @@ public interface ReviewAnalysisRepository extends JpaRepository<ReviewAnalysis, 
      * 성공한 분석 결과만 조회합니다.
      */
     List<ReviewAnalysis> findByIsSuccessTrueOrderByCreatedAtDesc();
+    
+
     
     /**
      * 실패한 분석 결과만 조회합니다.

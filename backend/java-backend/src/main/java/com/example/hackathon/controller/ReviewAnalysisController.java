@@ -213,11 +213,9 @@ public class ReviewAnalysisController {
      * 분석 결과를 조회합니다.
      */
     @GetMapping("/results")
-    public ResponseEntity<Map<String, Object>> getAnalysisResults(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<Map<String, Object>> getAnalysisResults() {
         
-        log.info("분석 결과 조회: page={}, size={}", page, size);
+        log.info("분석 결과 조회");
         
         Map<String, Object> response = new HashMap<>();
         
@@ -225,19 +223,11 @@ public class ReviewAnalysisController {
             // 모든 분석 결과 조회 (성공한 것만)
             List<ReviewAnalysis> allAnalyses = reviewAnalysisRepository.findByIsSuccessTrueOrderByCreatedAtDesc();
             
-            // 페이징 처리
-            int start = page * size;
-            int end = Math.min(start + size, allAnalyses.size());
-            
-            List<ReviewAnalysis> pagedAnalyses = allAnalyses.subList(start, end);
-            
             response.put("success", true);
             response.put("totalCount", allAnalyses.size());
-            response.put("page", page);
-            response.put("size", size);
-            response.put("results", pagedAnalyses);
+            response.put("results", allAnalyses);
             
-            log.info("분석 결과 조회 완료: 총 {}개 중 {}개 반환", allAnalyses.size(), pagedAnalyses.size());
+            log.info("분석 결과 조회 완료: 총 {}개 반환", allAnalyses.size());
             
         } catch (Exception e) {
             log.error("분석 결과 조회 실패: {}", e.getMessage(), e);
